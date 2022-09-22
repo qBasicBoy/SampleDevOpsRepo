@@ -1,8 +1,11 @@
 # Details DevOps Repo
 
-This repository holds the Devops Resources, it holds the yaml files for the pipelines in the [Dev Ops Pipelines Section](https://dev.azure.com/OrgName/Sample_Rackspace/_build)
+BASED ON 
 
-More Information about yaml based pipelines can be found on the [Microsoft Site](https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema%2Cparameter-schema) 
+This repository holds the Devops Resources, it holds the yaml files for the pipelines in the [Dev Ops Pipelines Section](https://dev.azure.com/OrgNameProjNS/Sample_Rackspace/_build)
+
+More Information about yaml based pipelines can be found on the [Microsoft Site](https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema%2Cparameter-schema
+) 
 
 **Table of Contents**
 [[_TOC_]] 
@@ -36,7 +39,6 @@ The Templates will in the lowest folder of which they are shared with so for exa
 	- GenerateVersionString.Template.yml
 	- PackageRestore.Template.yml
 	
-
 
 
 ## Documentation Standards and Auto Generated Content
@@ -168,84 +170,6 @@ for example the the summary and remarks tags from the release pipeline
 - Build-Pack-LegacyStyle
 
 
-## Sample-OfflineForms_CI.pipeline.yml
-
-### summary
-
- This is the CI Pipeline definition file for the Sample-OfflineForms Project
- Its triggered when the Master branch gets updated
- 
-### remarks
-
- This Pipeline file uses Variables and parameters, 
- the parameters are used because they allow for objects with multiple properties to be defined
- this cannot be done using variables
-
-### Templates Used by Pipeline
-- GenerateVersionString
-- SetBuildName
-- PackageRestore
-- RunUnitTests
-- Build-Pack-LegacyStyle
-
-
-## Sample-OfflineForms_2_Build_Release.pipeline.yml
-
-### summary
-
- This is the Build and Release Pipeline file for the OfflineForms Version 2 apps and functions
- It will deploy directly to the relevant Azure resource
- Each environment has its on stage
- 
-### remarks
-
- This Pipeline file uses Variables and parameters, 
- the parameters are used because they allow for objects with multiple properties to be defined
- this cannot be done using variables
- 
- Each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
- the variable groups are mapped to the Stage(Dev, QA, Prod) to get the corresponding settings for each environment
-
-### Templates Used by Pipeline
-- GenerateVersionString
-- SetBuildName
-- PackageRestore
-- Build
-- RunUnitTests
-- PublishFunctionApp
-- SetFunctionAppSettings
-- PublishWebApp
-- SetWebAppSettings
-- PublishFunctionApp
-- SetFunctionAppSettings
-- PublishWebApp
-- SetWebAppSettings
-- PublishFunctionApp
-- SetFunctionAppSettings
-- PublishWebApp
-- SetWebAppSettings
-
-
-## Sample-OfflineForms_Release.pipeline.yml
-
-### summary
-
- This is the Release Pipeline definition file for the Sample-Offlineforms Project
- Its triggered when a new release branch is created or an existing release branch updated
- 
-### remarks
-
- This Pipeline file uses Variables and parameters, 
- the parameters are used because they allow for objects with multiple properties to be defined
- this cannot be done using variables
-
-### Templates Used by Pipeline
-- GenerateVersionString
-- SetBuildName
-- PackageRestore
-- Build-Pack-LegacyStyle
-
-
 ## Sample-Services_Translation_Build_Release.pipeline.yml
 
 ### summary
@@ -260,7 +184,7 @@ for example the the summary and remarks tags from the release pipeline
  the parameters are used because they allow for objects with multiple properties to be defined
  this cannot be done using variables
  
- Each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
+ Each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgNameProjNS/Sample/_library?itemType=VariableGroups
  the variable groups are mapped to the Stage(Dev, QA, Prod) to get the corresponding settings for each environment
 
 ### Templates Used by Pipeline
@@ -361,22 +285,6 @@ for example the the summary and remarks tags from the release pipeline
 
  This Template will apply the settings to the pipeline function app
  
-### Param
-
- function app setting is passed as a Parameter
- those are: minutesToRetainIncompleteData, functionAppName, blobStoreContainerName, cosmosDatabaseName, cosmosConnectionString
-
-### Template is used by:
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-Services_Translation_Build_Release.pipeline.yml
-
-
-## SetWebAppSettings.Template.yml
-
-### summary
-
- This Template will apply the settings to the pipeline web apps
- 
 ### remarks
 
  There are no Parameters passed in, the template uses Variables that have been defined in a variable group within the DevOps library, 
@@ -392,31 +300,6 @@ for example the the summary and remarks tags from the release pipeline
  the variable groups are mapped to the Stage(Dev, QA, Prod) calling the template and is then accessible from this Template 
 
 ### Template is used by:
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-
-
-## SetFunctionAppSettings.Template.yml
-
-### summary
-
- This Template will apply the settings to the pipeline function app
- 
-### remarks
-
- There are no Parameters passed in, the template uses Variables that have been defined in a variable group within the DevOps library, 
- see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
- the variable groups are mapped to the Stage(Dev, QA, Prod) calling the template and is then accessible from this Template
-
- This is done so we dont have to map each setting to a parameter in the pipeline 
-
-### Param
-
- instead of parameters this template uses Variables defined in the parent pipeline
- each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
- the variable groups are mapped to the Stage(Dev, QA, Prod) calling the template and is then accessible from this Template 
-
-### Template is used by:
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 
 
@@ -447,9 +330,6 @@ for example the the summary and remarks tags from the release pipeline
 - Sample-API_Release.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
@@ -463,9 +343,6 @@ for example the the summary and remarks tags from the release pipeline
 - Sample-API_Release.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
@@ -477,8 +354,6 @@ for example the the summary and remarks tags from the release pipeline
 ### Template is used by:
 - Sample-API_CI.pipeline.yml
 - Sample-Core_CI.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
 
@@ -531,8 +406,6 @@ GulpTasks a string list of the gulp tasks to run
 ### Template is used by:
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
 - Sample-SupportTool_Release.pipeline.yml
@@ -597,9 +470,6 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-API_Release.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
@@ -628,9 +498,6 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-API_Release.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
@@ -640,14 +507,12 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 ## PublishFunctionApp.Template.yml
 
 ### Template is used by:
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 
 
 ## PublishWebApp.Template.yml
 
 ### Template is used by:
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
 
 
 ## RunUnitTests.Template.yml
@@ -666,8 +531,6 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 ### Template is used by:
 - Sample-API_CI.pipeline.yml
 - Sample-Core_CI.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
 
@@ -693,9 +556,6 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-API_Release.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
-- Sample-OfflineForms_CI.pipeline.yml
-- Sample-OfflineForms_2_Build_Release.pipeline.yml
-- Sample-OfflineForms_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
 - Sample-SupportTool_CI.pipeline.yml
