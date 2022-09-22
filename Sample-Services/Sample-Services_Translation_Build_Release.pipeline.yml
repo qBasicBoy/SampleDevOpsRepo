@@ -33,9 +33,9 @@ parameters:
     default:
     - { Name: 'Types', NameSpace: 'Sample.Services.TextTranslation.', PackageNS: 'Sample.Services.TextTranslation', PublishAsNuget: true }
     - { Name: 'Functions', NameSpace: 'Sample.Services.TextTranslation.', PackageNS: 'Sample.Services.TextTranslation', PublishAsArtifact: true, PublishToFunctionApp: true, functionAppName: alc-Sample-func-translation}
-    - { Name: 'Functions', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsArtifact: true, PublishToFunctionApp: true, functionAppName: alc-Sample-func-translation-ie }
-    - { Name: 'Types', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsNuget: true }
-    - { Name: 'Client', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsNuget: true }
+    - { Name: 'Functions', NameSpace: 'Sample.Services.TextTranslation.NameSpace.', PackageNS: 'Sample.Services.TextTranslation.NameSpace', PublishAsArtifact: true, PublishToFunctionApp: true, functionAppName: alc-Sample-func-translation-ie }
+    - { Name: 'Types', NameSpace: 'Sample.Services.TextTranslation.NameSpace.', PackageNS: 'Sample.Services.TextTranslation.NameSpace', PublishAsNuget: true }
+    - { Name: 'Client', NameSpace: 'Sample.Services.TextTranslation.NameSpace.', PackageNS: 'Sample.Services.TextTranslation.NameSpace', PublishAsNuget: true }
 
   - name: TestCoreProjects
     displayName: 'Test Projects to be included'
