@@ -1,0 +1,133 @@
+# <summary>
+# This Template will apply the settings to the pipeline function app
+# </summary>
+
+#<remarks>
+# There are no Parameters passed in, the template uses Variables that have been defined in a variable group within the DevOps library, 
+# see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
+# the variable groups are mapped to the Stage(Dev, QA, Prod) calling the template and is then accessible from this Template
+#
+# This is done so we dont have to map each setting to a parameter in the pipeline 
+#</remarks>
+
+#<Param>
+# instead of parameters this template uses Variables defined in the parent pipeline
+# each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgName/Sample/_library?itemType=VariableGroups
+# the variable groups are mapped to the Stage(Dev, QA, Prod) calling the template and is then accessible from this Template 
+#</Param>
+
+
+
+
+#Template to set the function app settings in Azure 
+    
+steps:
+  - task: AzureAppServiceSettings@1
+    displayName: Update function app settings
+    inputs:
+      azureSubscription: $(azureSubscription)
+      appName: $(TranslationFunctionName)
+      resourceGroupName: $(ResourceGroupName)
+      appSettings: |
+        [
+          {
+            "name": "AzureTranslationServiceProviderSettings:SubscriptionKey",
+            "value": "$(SubscriptionKey)",
+            "slotSetting": false
+          },
+          {
+            "name": "AzureTranslationServiceProviderSettings:Endpoint",
+            "value": "https://api.cognitive.microsofttranslator.com/",
+            "slotSetting": false
+          },
+          {
+            "name": "TranslationRequestConnectionString",
+            "value": "$(TranslationRequestConnectionString)",
+            "slotSetting": false
+          },
+          {
+            "name": "TranslationResponseConnectionString",
+            "value": "$(TranslationResponseConnectionString)",
+            "slotSetting": false
+          },    
+          {
+            "name": "Serilog:AppInsightsMinimumLogLevel",
+            "value": "$(AppInsightsMinimumLogLevel)",
+            "slotSetting": false
+          },
+          {
+            "name": "ExceptionlessSettings:ApiKey",
+            "value": "$(ExceptionlessSettingsApiKey)",
+            "slotSetting": false
+          },
+          {
+            "name": "ExceptionlessSettings:ServerUrl",
+            "value": "$(ExceptionlessSettingsServerUrl)",
+            "slotSetting": false
+          }
+        ]
+          
+  - task: AzureAppServiceSettings@1
+    displayName: Update IE function app settings
+    inputs:
+      azureSubscription: $(azureSubscription)
+      appName: '$(TranslationFunctionName-IE)'
+      resourceGroupName: $(ResourceGroupName)
+      appSettings: |
+        [
+            {
+            "name": "TranslateTableRequestConnectionString",
+            "value": "$(TranslateTableRequestConnectionString)",
+            "slotSetting": false
+          },
+          {
+            "name": "TranslateTableBatchRequestConnectionString",
+            "value": "$(TranslateTableBatchRequestConnectionString)",
+            "slotSetting": false
+          },
+          {
+            "name": "TranslateTableRequestHandlerSettings:SendMessageBatchSize",
+            "value": $(SendMessageBatchSize),
+            "slotSetting": false
+          },
+          {
+            "name": "TranslationRequestConnectionString",
+            "value": "$(TranslationRequestConnectionString-IE)",
+            "slotSetting": false
+          },
+          {
+            "name": "TranslationResponseConnectionString",
+            "value": "$(TranslationResponseConnectionString-IE)",
+            "slotSetting": false
+          },
+          {
+            "name": "DatabaseSettings:SystemDatabaseConnectionString",
+            "value": "$(SystemDatabaseConnectionString)",
+            "slotSetting": false
+          },
+          {
+            "name": "AzureServiceBusMessageQueueClientSettings:TranslationRequestConnectionString",
+            "value": "$(TranslationRequestConnectionString-IE)",
+            "slotSetting": false
+          },
+          {
+            "name": "AzureServiceBusMessageQueueClientSettings:TranslationBatchRequestConnectionString",
+            "value": "$(TranslationBatchRequestConnectionString)",
+            "slotSetting": false
+          },
+          {
+            "name": "Serilog:AppInsightsLogLevel",
+            "value": "$(AppInsightsMinimumLogLevel)",
+            "slotSetting": false
+          },
+          {
+            "name": "ExceptionlessSettings:ApiKey",
+            "value": "$(ExceptionlessSettingsApiKey)",
+            "slotSetting": false
+          },
+          {
+            "name": "ExceptionlessSettings:ServerUrl",
+            "value": "$(ExceptionlessSettingsServerUrl)",
+            "slotSetting": false
+          }
+        ]

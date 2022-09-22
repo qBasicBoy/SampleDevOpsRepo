@@ -1,0 +1,29 @@
+
+# <summary>
+# This Template will update the Timezone settings of the Build Agent
+# </summary>
+
+#<param>
+#AgentTimeZone, set the correct timezone, run Get-TimeZone in PS to see the available timezones
+#</param>
+
+#<remarks>
+#</remarks>
+
+parameters:
+
+  - name: AgentTimeZone
+    type: string
+    default: "GMT Standard Time"
+  
+  #Build and run Unit Tests in Projects 
+steps:
+  - task: PowerShell@2
+    displayName: 'Populate Version Variable'
+    continueOnError: false
+    inputs:
+      targetType: Inline
+      script: |
+        Get-TimeZone
+        Set-TimeZone -Name "${{ parameters.AgentTimeZone }}"
+        Get-TimeZone

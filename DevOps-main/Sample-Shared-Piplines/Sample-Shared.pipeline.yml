@@ -1,0 +1,161 @@
+# <summary>
+# To share and reuse code between the solutions we use the Sample-Shared pipeline to pack the shared code into NuGet Packages. The generated packages can then be consumed from multiple solutions and projects.
+# For example, the Sample Core Solution has the code to access the Database and the Sample API Solution reuses this code.
+# In order to make the shared code available as NuGet Packages, the Sample-Shared Pipeline builds and publishes the shared code. As an example, we run the following steps in the Pipeline for the DataAccess Project.
+# 1. Build the DataAccess Project
+# 2. Package it as a NuGet Package
+# 3. Upload it to a shared artifact feed
+# 4. Add the NuGet package with a reference to the Sample API Solution’s Web Project
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters,
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+#</remarks>
+
+#<ToDo>
+# In order for Debug Symbols and sourceLink info to work the project files need to be migrated
+# to the new project file layout, please follow the instructions in ticket 2943 / confluence
+# reenable code on line 44 and 134
+#</ToDo>
+
+
+#Shared Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources
+resources:
+ repositories:
+  - repository: Sample-Core # code repository
+    name: Sample/ProjNS-Core
+    type: git
+    ref: master #branch name
+    pipelines:  # Get the pipeline Sample-Core-Release and use Sample-Core-Trigger as alias
+    - pipeline:  Sample-Core-Trigger
+      source:  Sample-Core-Release
+      trigger:
+        branches:
+        - release/release-* # Trigger will be updates or new branches under this path after the resource pipeline (Sample-Core-Release) has ran succesfully
+
+# Run the Pipeline against the List of Projects specified
+parameters:
+  # - name: ProjectsToIncludeSharedPipe
+  #   displayName: 'Projects to be included in the Pipeline'
+  #   type: object
+
+  - name: ProjectsToIncludeSharedPipeLegacyBuild
+    displayName: 'Projects to be Buld Legacy style Pipeline'
+    type: object
+    default:
+    - { Name: 'Migrations', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'DataModel', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'OfflineFormsDtos', NameSpace: '', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'Services', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'Persistence', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'Messaging', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'Internationalisation', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+    - { Name: 'DataAccess', NameSpace: 'InfoExchange2.', PackageNS: 'OrgName.InfoExchange2' }
+
+
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildPlatformProj
+  value: 'AnyCPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-Shared
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: CIPipeline
+  value: true
+- name: NugetConfigPath
+  value: '$(Build.SourcesDirectory)/$(CodeRepoName)/Source/.nuget/nuget.config'
+- name: CodeRepoBranchName #Get the branch name of that the code repo is using
+  value: $[ resources.repositories['Sample-Core'].ref ]
+
+pool:
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+jobs:
+- job: Buildpublish
+  displayName: Build Test and Publish to feed
+  steps:
+  - checkout: Sample-Core
+    path: s/$(CodeRepoName)
+  - checkout: Self
+    path: s/Sample-DevOps
+
+#Trigger and Build information
+  - script: |
+      echo "Triggered by Pipeline: $(resources.pipeline.Sample-Core-Trigger.pipelineName)"
+      echo "Trigger Build: $(resources.pipeline.Sample-Core-Trigger.runName)"
+      echo "For: $(resources.pipeline.Sample-Core-Trigger.requestedFor)"
+      echo "$(resources.triggeringAlias)"
+      echo "$(resources.triggeringCategory)"
+      echo
+    displayName: 'Pipeline Info'
+
+#Generate Version String
+  - template: '..\SharedResources\GenerateVersionString.Template.yml'
+
+  #Rename Build
+  - template: \SharedResources\SetBuildName.Template.yml
+
+#Version Assemblies
+#  - task: PowerShell@2
+#    displayName: 'Version Assemblies'
+#    inputs:
+#      targetType: filePath
+#      filePath: './Version-Assemblies.ps1'
+#      arguments: '-Version $(Build.BuildNumber) -Tag $(PackVer)'
+#      failOnStderr: true
+
+#NugetRestore
+  - template: \SharedResources\PackageRestore.Template.yml
+    parameters:
+      PackageRefProjs: true
+      nugetConfigPath: $(NugetConfigPath)
+
+
+
+ #Build  and package Projects
+
+  - template: '\SharedResources\Build-Pack-LegacyStyle.Template.yml'
+    parameters:
+      packVer: $(PackVer)
+      projects: ${{parameters.ProjectsToIncludeSharedPipeLegacyBuild}}
+
+  #Build and pack Projects
+
+  # - template: \SharedResources\Build-Pack-NetSDKStyle.Template.yml
+  #   parameters:
+  #     packVer: $(PackVer)
+  #     projects: ${{parameters.ProjectsToIncludeSharedPipe}}
+
+# Index sources and publish symbols
+
+  # - template: \Sample-Shared-Piplines\Resources\IndexAndPublishSymbols.Template.yml
+  #   parameters:
+  #     packVer: $(PackVer)
+  #     projects: ${{parameters.ProjectsToIncludeSharedPipe}}
+
+#Push Packages to feed
+
+  - task: NuGetCommand@2
+    displayName: 'Push Nuget packages to feed'
+    inputs:
+      command: 'push'
+      feedsToUse: 'select'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.*nupkg*'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: $(NugetFeed)
+      versioningScheme: byEnvVar
+      versionEnvVar: $(PackVer)
+      allowPackageConflicts: true
+      publishPackageMetadata: false

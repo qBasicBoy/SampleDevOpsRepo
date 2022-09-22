@@ -1,0 +1,86 @@
+# <summary>
+# This Template will build and package projects that are based on the newer .net sdk project file layout, 
+# you can recognize the projects by having the the dependency section instead of the old style Properties and References section 
+# It includes the tasks to build the project and package it all in to a nuget file.
+# </summary>
+
+
+#<remarks>
+# This template dos not have the gulp tasks and other steps for web projects 
+# because the projects we have at the time this template was written had no need for it
+# if it becomes a requirement in the future the tasks can be copied from the Build-Pack-LegacyStyle.Template.yml
+#
+# This template allows for Packages to be build in the nuget standard using the dotnet/msbuild /pack parameter
+#but alternatively Octopack can be used, by setting the UseOctoPack template parameter to true or false
+#</remarks>
+
+#<param>
+# **packVer** This parameter is to hold the Version String used for the NuGet package 
+# **projects**
+# To hold a List of objects for each Project to be build and packaged in the format:
+#- { Name: 'Web.Api', NameSpace: '', PackageNS: 'OrgName.Sample-API' }
+#- { Name: 'BackgroundProcessing', PackageNS: 'OrgName.Sample-API', NameSpace: '' }
+# **PackageDescription**  With this parameter the Nuget Package Description can be customized, 
+# the description shows in the NuGet feed and packagemanager
+# **UseOctoPack set to false To use dotnet sdk for packing or true to use Octopack**
+#</param>
+
+parameters:
+
+- name: packVer
+  type: string
+
+- name: projects
+  type: object
+
+- name: PackageDescription
+  type: string
+  default: 'Nuget Package from Sample Pipeline'
+
+- name: UseOctoPack
+  type: string
+  default: 'false'  
+
+steps:
+  - ${{ if ne( parameters.UseOctoPack, true) }}:
+    - ${{each projProps in parameters.projects}}:
+      #Loop through  all projects in list
+        #Build and package Project
+      - task: VSBuild@1
+        displayName: 'Build ${{ projProps.Name }}'
+        inputs:
+          solution: '*\**\${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+          msbuildArgs: '/T:pack /p:RunCodeAnalysis=False /p:PackageDescription="${{ parameters.PackageDescription }}" /p:EmbedUntrackedSources=true /p:PublishRepositoryUrl=true /p:SourceLinkCreate=true /p:IsPackable=true /p:PackageOutputPath="$(Build.ArtifactStagingDirectory)\${{ projProps.NameSpace }}${{ projProps.Name }}" /p:PackageId="${{ projProps.PackageNS }}.${{ projProps.Name }}" /p:PackageVersion=$(packVer)'
+          platform: '$(BuildPlatform)'
+          configuration: '$(BuildConfiguration)'
+          clean: false
+          maximumCpuCount: true
+      #End Loop
+  - ${{ if eq( parameters.UseOctoPack, true) }}:
+    - ${{each projProps in parameters.projects}}:
+      #Loop through  all projects in list
+        
+      #Build Project
+      - task: VSBuild@1
+        displayName: Build ${{ projProps.Name }}
+        inputs:
+          solution: '*\**\${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+          msbuildArgs: '-p:EmbedUntrackedSources=true -p:PublishRepositoryUrl=true -p:SourceLinkCreate=true -p:OutputPath="$(Build.StagingDirectory)/${{ projProps.Name }}" '
+          platform: '$(BuildPlatform)'
+          configuration: '$(BuildConfiguration)'
+          clean: false
+          maximumCpuCount: true
+      #Package using Octopack
+      - task: OctopusPack@4
+        displayName: Create ${{ projProps.Name }} Package
+        inputs:
+          PackageId: ${{ projProps.PackageNS }}.${{ projProps.Name }}
+          PackageDescription: ${{ parameters.PackageDescription }}
+          PackageFormat: 'NuPkg'
+          PackageVersion: $(PackVer)
+          SourcePath: '$(Build.StagingDirectory)/${{ projProps.Name }}'
+          OutputPath: $(Build.ArtifactStagingDirectory)  
+
+      #End Loop
+
+

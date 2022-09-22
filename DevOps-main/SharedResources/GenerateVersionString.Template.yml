@@ -1,0 +1,79 @@
+# <summary>
+# This Template will Populate the Version string, 
+# for none CI pipelines it will version in the Format:
+# Year.Month.Day.RunCounter-BranchName 
+# so for example bugfix/3453_test-branch will result in version 2021.7.23.2-bugfix-3453-test-branch 
+# If the parameter is set to true the branch name will always be set to master
+# </summary>
+
+#<remarks>
+# This template requires a variable called $PackVer to be defined as empty string 
+# in the Parent Pipeline 
+# $PackVer will be populated with the Version String once this template executed 
+#</remarks>
+
+#<param>
+# **isCIPipeline** this parameter is set depending on if the pipeline is a CI or Release pipeline 
+#</param>
+
+parameters:
+
+- name: IsCIPipeline
+  type: boolean
+  default: false
+
+
+steps:
+  #If not isCIPipeline
+- ${{ if eq(parameters.DebugMode, false) }}:
+  - task: PowerShell@2
+    name: PopulateVersionVar
+    displayName: 'Populate Version Variable'
+    continueOnError: false
+    inputs:
+      targetType: Inline
+      script: |
+        echo $Env:BUILD_BUILDNUMBER
+        $buildNumber = $Env:BUILD_BUILDNUMBER
+        echo $buildNumber
+        $revision = $buildNumber.Substring($buildNumber.LastIndexOf('.') + 1)
+        echo "revision: $revision"
+        $branchSourcePath = "$(CodeRepoBranchName)" -replace "refs/heads/", "" 
+        echo $branchSourcePath
+        $branchSourcePath = $branchSourcePath -replace "\.", "-"
+        echo $branchSourcePath
+        $VersionVar = $(Get-Date -Format yyyy.MM.dd) + ".$revision-$branchSourcePath"
+        echo $VersionVar
+        $VersionVar = $VersionVar -replace "/", "-"
+        $VersionVar = $VersionVar -replace "_", "-"
+        Write-Host "setting VersionVar = $VersionVar"
+        echo "##vso[task.setvariable variable=PackVer]$VersionVar"
+        Write-Host "PackVer $PackVer"
+        Write-Host "VersionVar $VersionVar"
+        echo "##vso[task.setvariable variable=globalVersionVar;isOutput=true]$VersionVar"
+        echo "GlobalVar $globalVersionVar"
+#If isCIPipeline  
+- ${{ if eq(parameters.IsCIPipeline, true) }}:
+  - task: PowerShell@2
+    displayName: 'Populate Version Variable'
+    name: PopulateVersionVar
+    continueOnError: false
+    inputs:
+      targetType: Inline
+      script: |
+        echo $Env:BUILD_BUILDNUMBER
+        $buildNumber = $Env:BUILD_BUILDNUMBER
+        echo $buildNumber
+        $revision = $buildNumber.Substring($buildNumber.LastIndexOf('.') + 1)
+        echo "revision: $revision"
+        $VersionVar = $(Get-Date -Format yyyy.MM.dd) + ".$revision-master"
+        echo $VersionVar
+        $VersionVar = $VersionVar -replace "/", "-"
+        $VersionVar = $VersionVar -replace "_", "-"
+        Write-Host "setting VersionVar = $VersionVar"
+        echo "##vso[task.setvariable variable=PackVer]$VersionVar"
+        echo "##vso[task.setvariable variable=globalVersionVar;isOutput=true]$VersionVar"
+        Write-Host "PackVer $PackVer"
+        Write-Host "VersionVar $VersionVar"
+#EndIf
+ 

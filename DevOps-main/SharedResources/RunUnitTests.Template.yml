@@ -1,0 +1,51 @@
+# <summary>
+# This Template will first build and then run the unit tests
+# for the projects that are passed to the template as object parameter
+# </summary>
+
+#<Param>
+# The object parameter projects expects the format
+# - {  ProjectFileName: 'JsonApiSerialization.Tests', DisplayName: JsonApiSerialization } 
+# - {  ProjectFileName: 'Enable.Testing.Infrastructure', DisplayName: Infrastructure }
+#</Param>
+
+
+parameters:
+- name: projects
+  type: object
+
+- name: UseAgent
+  type: string
+  default: any 
+
+#Build and run Unit Tests in Projects 
+steps:
+  - ${{if parameters.projects}}: # null check
+    #Loop throue all projects in list
+    - ${{each projProps in parameters.projects}}:    
+      #Filter if Project should be build on this agent
+      - ${{ if or( eq(parameters.UseAgent, 'any'), eq(parameters.UseAgent, projProps.UseAgent) ) }}:
+        #Build Project
+        - task: VSBuild@1
+          displayName: 'Build ${{ projProps.DisplayName }} tests'
+          inputs:
+            solution: '*\**\${{ projProps.ProjectFileName }}.csproj'
+            msbuildArgs: '/p:RunCodeAnalysis=False /p:OutputPath="$(Build.StagingDirectory)\${{ projProps.ProjectFileName }}"'
+            platform: '$(BuildPlatform)'
+            configuration: '$(BuildConfiguration)'
+            clean: false
+            maximumCpuCount: true
+          #Run Tests
+        - task: VSTest@2
+          displayName: 'Test Assemblies for ${{ projProps.DisplayName }} '
+          inputs:
+            testAssemblyVer2: |
+              $(Build.StagingDirectory)\**\*${{ projProps.ProjectFileName }}*.dll
+              !**\obj\**
+              codeCoverageEnabled: true
+              platform: '$(BuildPlatform)'
+              configuration: '$(BuildConfiguration)'
+            runInParallel: true 
+            minimumExpectedTests: '1'
+      #End Loop
+    #End If

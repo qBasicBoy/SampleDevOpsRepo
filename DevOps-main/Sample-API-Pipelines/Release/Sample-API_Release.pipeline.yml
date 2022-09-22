@@ -1,0 +1,86 @@
+# <summary>
+# This is the Release Pipeline definition file for the Sample-API Project
+# Its triggered when a new release branch is created or an existing release branch updated
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters, 
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+#</remarks>
+
+#API Release Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources 
+resources:
+ repositories: 
+  - repository: Sample-API # code repository
+    name: Sample/ProjNS-API 
+    type: git 
+    trigger:  # Release trigger for this repository
+    - 'release/version-*'
+
+# Run the Pipeline against the List of Projects specified 
+parameters:
+  - name: ProjectsToIncludeAPI
+    displayName: 'Projects to be included in the Pipeline'
+    type: object
+    default:
+    - { Name: 'Web.Api', NameSpace: '', PackageNS: 'OrgName.ProjNSAPI', IsWebProj: true, Precompile: true ,SourceDir: 'Source\Web' }
+    - { Name: 'BackgroundProcessing', NameSpace: '', PackageNS: 'OrgName.ProjNSAPI' }
+
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-API
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: CIPipeline
+  value: false
+- name: CodeRepoBranchName #Get the branch name of that the code repo is using
+  value: $[ resources.repositories['Sample-API'].ref ]
+
+pool:  
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+jobs:
+- job: Main
+  displayName: Restore Build and Publish Projects
+  steps:
+  - checkout: Sample-API
+    path: s/$(CodeRepoName)
+  - checkout: Self
+    path: s/Sample-DevOps
+
+  #Generate Version String
+  - template: '\SharedResources\GenerateVersionString.Template.yml'
+    parameters:
+      IsCIPipeline:  ${{ variables.CIPipeline }}
+
+  #Rename Build
+  - template: \SharedResources\SetBuildName.Template.yml 
+  
+  #Package Restore    
+  - template: \SharedResources\PackageRestore.Template.yml
+
+  #Build and pack Projects 
+  - template: \SharedResources\Build-Pack-NetSDKStyle.Template.yml
+    parameters:
+      packVer: $(PackVer)
+      projects: ${{parameters.ProjectsToIncludeAPI}}
+      UseOctoPack: 'true'
+    
+  - task: NuGetCommand@2
+    displayName: Push Packages to NuGet feed
+    inputs:
+      command: 'push'
+      packagesToPush: '$(Build.ArtifactStagingDirectory)\**\*.nupkg'
+      nuGetFeedType: 'internal'
+      publishVstsFeed: $(NugetFeed)

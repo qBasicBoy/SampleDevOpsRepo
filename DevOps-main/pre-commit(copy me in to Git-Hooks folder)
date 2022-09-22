@@ -1,0 +1,7 @@
+#!/bin/sh
+
+#Copy this file in the git/hooks folder
+#It will regenerate the documentation after each commit
+
+echo "executing git hook pre commit"
+powershell -file ReGenerateReadMe.ps1 args

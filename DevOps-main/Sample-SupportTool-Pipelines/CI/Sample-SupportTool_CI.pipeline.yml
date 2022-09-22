@@ -1,0 +1,100 @@
+# <summary>
+# This is the CI Pipeline definition file for the Sample-SupportTool Project
+# Its triggered when the Master branch gets updated
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters, 
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+#</remarks>
+
+
+#SupportTool CI Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources 
+resources:
+ repositories: 
+  - repository: Sample-SupportTool # code repository
+    name: Sample/ProjNS-SupportTool 
+    type: git 
+    trigger:  # Release trigger for this repository
+    - 'master'
+
+# Run the Pipeline against the List of Projects specified 
+parameters:
+  - name: ProjectsToIncludeSupportTool
+    displayName: 'Projects to be included in the Pipeline'
+    type: object
+    default:
+    - { Name: 'Maintenance', NameSpace: '', PackageNS: 'OrgName.ProjNSSupportTool'}
+    - { Name: 'Migrate', NameSpace: '', PackageNS: 'OrgName.ProjNSSupportTool' }
+    - { Name: 'Web', NameSpace: '', PackageNS: 'OrgName.ProjNSSupportTool' , IsWebProj: true, Precompile: false ,SourceDir: 'Source\Web', RunGulp: false, InstallNodes: true}
+  - name: TestProjects
+    type: object
+    default:
+    # - {  ProjectFileName: 'Communication.Test', DisplayName: Communication } error CS0246: The type or namespace name 'Core' could not be found (are you missing a using directive or an assembly reference?) 
+    - {  ProjectFileName: 'DatabaseSchemaTest', DisplayName: DatabaseSchema }
+    - {  ProjectFileName: 'Migrate.IntegrationTests', DisplayName: Migrate }
+
+
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildPlatformProj
+  value: 'AnyCPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-SupportTool
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: CIPipeline
+  value: true
+- name: NugetConfigPath
+  value: '$(Build.SourcesDirectory)/$(CodeRepoName)/Source/.nuget/nuget.config'
+- name: WebWorkingDir
+  value: '$(CodeRepoName)/Source/Web'
+- name: CodeRepoBranchName #Get the branch name of that the code repo is using
+  value: $[ resources.repositories['Sample-SupportTool'].ref ]
+
+pool:  
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+jobs:
+- job: Main
+  displayName: Restore Build and Publish Projects
+  steps:
+  - checkout: Sample-SupportTool
+    path: s/$(CodeRepoName)
+  - checkout: Self
+    path: s/Sample-DevOps
+
+#Generate Version String
+  - template: '\SharedResources\GenerateVersionString.Template.yml'
+    parameters:
+      IsCIPipeline:  ${{ variables.CIPipeline }}
+ 
+#Rename Build
+  - template: \SharedResources\SetBuildName.Template.yml 
+
+#NugetRestore
+  - template: \SharedResources\PackageRestore.Template.yml
+    parameters:
+      PackageRefProjs: true
+      nugetConfigPath: $(NugetConfigPath)
+
+  #Run Unit Tests
+  - template: \SharedResources\RunUnitTests.Template.yml
+    parameters:
+      projects: ${{ parameters.TestProjects }}
+
+#Build and package
+  - template: '\SharedResources\Build-Pack-LegacyStyle.Template.yml'
+    parameters:
+      packVer: $(PackVer)
+      projects: ${{parameters.ProjectsToIncludeSupportTool}}

@@ -1,0 +1,44 @@
+#Template to build and pack Projects based on the Microsoft.NET.Sdk Style
+
+parameters:
+
+- name: packVer
+  type: string
+
+- name: projects
+  type: object
+
+- name: PackageDescription
+  type: string
+  default: 'Nuget Package from Sample Pipeline'
+
+steps:
+  - ${{each projProps in parameters.projects}}:
+      #Loop throue all projects in list
+    - ${{ if eq(projProps.PublishAsNuget, true) }}:
+        #Build Project
+      - task: DotNetCoreCLI@2
+        displayName: 'Build ${{ projProps.Name }} publish as nuget'
+        inputs:
+          command: 'build'
+          projects: '*\**\${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+          #arguments: '/T:pack /p:RunCodeAnalysis=False /p:PackageDescription="${{ parameters.PackageDescription }}" /p:EmbedUntrackedSources=true /p:PublishRepositoryUrl=true /p:SourceLinkCreate=true /p:IsPackable=true /p:OutputPath="$(Build.StagingDirectory)\${{ projProps.NameSpace }}${{ projProps.Name }}" /p:PackageOutputPath="$(Build.ArtifactStagingDirectory)\nuget\${{ projProps.NameSpace }}${{ projProps.Name }}" /p:PackageVersion=$(packVer)'
+          arguments: '/T:pack /p:RunCodeAnalysis=False /p:PackageDescription="${{ parameters.PackageDescription }}" /p:IsPackable=true /p:OutputPath="$(Build.StagingDirectory)\${{ projProps.NameSpace }}${{ projProps.Name }}" /p:PackageOutputPath="$(Build.ArtifactStagingDirectory)\nuget\${{ projProps.NameSpace }}${{ projProps.Name }}" /p:PackageVersion=$(packVer) /p:EmbedUntrackedSources=true /p:PublishRepositoryUrl=true /p:SourceLinkCreate=true'
+          platform: '$(BuildPlatform)'
+          configuration: '$(BuildConfiguration)'
+          maximumCpuCount: true
+    - ${{ if eq(projProps.PublishAsArtifact, true) }}:
+      - task: DotNetCoreCLI@2
+        displayName: 'Build ${{ projProps.Name }} publish as artifact'
+        inputs:
+          command: 'publish'
+          publishWebProjects: false
+          projects: '*\**\${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+          arguments: '-o "$(Build.StagingDirectory)\artifact"'
+          platform: '$(BuildPlatform)'
+          configuration: '$(BuildConfiguration)'
+          maximumCpuCount: true
+      #End Loop
+  - publish: '"$(Build.ArtifactStagingDirectory)/"'
+    displayName: 'Publish StagingDirectory'
+    artifact: buildStagingDirectory

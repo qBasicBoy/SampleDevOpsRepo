@@ -1,0 +1,26 @@
+#Template to publish function apps to azure
+
+parameters:  
+  - name: projects
+    type: object
+  - name: Env
+    type: string
+  - name: ConnectionType
+    type: string
+    default: 'AzureRM'
+  
+steps:
+  - ${{each projProps in parameters.projects}}:
+    - ${{ if eq(projProps.PublishToWebApp, true) }}:
+      #Loop throue all projects in list
+        #Build Project
+      - task: AzureRmWebAppDeployment@4
+        displayName: Publish web app ${{ projProps.WebAppName }}-$(Env)
+        inputs:
+          ConnectionType: ${{ parameters.ConnectionType }}
+          azureSubscription: $(azureSubscription)
+          appType: 'webApp'
+          WebAppName: '${{ projProps.WebAppName }}-$(Env)'
+          packageForLinux: '$(Pipeline.Workspace)/buildStagingDirectory/artifact/**/*${{ projProps.NameSpace }}${{ projProps.Name }}*.zip'
+          JSONFiles: '**/appsettings.json'  
+      #End Loop

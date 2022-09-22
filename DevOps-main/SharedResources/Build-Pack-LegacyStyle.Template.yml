@@ -1,0 +1,192 @@
+# <summary>
+# This Template will build and package projects that are based on the old project file layout, 
+# you can recognize the projects by the Properties and References section instead of the new style dependency section 
+# It includes the tasks to build the project, run the gulp tasks for scss and js and package it all in to a NuGet file
+# </summary>
+
+#<param>
+# **packVer** This parameter is to hold the Version String used for the NuGet package 
+# **projects**
+# To hold a List of objects for each Project to be build and packaged in the format:
+#  
+#  - { Name: 'Web', NameSpace: '', PackageNS: 'OrgName.Sample-Core', IsWebProj: true, Precompile: true ,SourceDir: 'Source\Web' }
+#  - { Name: 'BackgroundProcessing', NameSpace: '', PackageNS: 'OrgName.Sample-Core' }
+#
+# Where IsWebProj will copy js and css files to the package, SourceDir is used as root for the copying of the css and js files
+# NameSpace is referring to the Project namespace for example InfoExchange2.{ProjectName} 
+# while PackageNS is for the NuGet package and can be for example Sample.{ProjectName}
+# **PackageDescription**  With this parameter the NuGet Package Description can be customized, 
+# the description shows in the NuGet feed and package manager
+# RunGulp parameter property is to install npm and run the gulp tasks
+#</param>
+#<param>GulpTasks a string list of the gulp tasks to run</param>
+
+
+#<remarks>
+#</remarks>
+
+parameters:
+
+  - name: packVer
+    type: string
+  
+  - name: projects
+    type: object
+  
+  - name: PackageDescription
+    type: string
+    default: 'Nuget Package from Sample Pipeline'
+  
+  - name: UseAgent
+    type: string
+    default: SingleAgentMode 
+  
+  - name: ShowDebugInfo
+    type: boolean
+    default: true
+  
+  - name: GulpTasks
+    type: object  
+    default:
+    - lint
+    - copyLibs
+    - minify
+  
+  #Build and run Unit Tests in Projects 
+steps:
+  #Loop through all projects in ist
+  - ${{each projProps in parameters.projects}}:
+    #Filter if Project should be build on this agent
+    - ${{ if or( eq(parameters.UseAgent, 'SingleAgentMode'), eq(parameters.UseAgent, projProps.UseAgent) ) }}:
+          #Build Project
+      - ${{ if ne(projProps.IsWebProj, true) }}:
+        - ${{ if eq( projProps.platform, '') }}: # allow to set platform via param 
+          - task: VSBuild@1
+            displayName: 'Build ${{ projProps.Name }} LegacyStyle'
+            inputs:
+              solution: '*/**/${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+              msbuildArgs: '-p:RunCodeAnalysis=False -p:OutputPath="$(Build.StagingDirectory)/${{ projProps.Name }}" -p:PackageDescription="${{ parameters.PackageDescription }}"'
+              platform: '${{ projProps.platform }}'
+              configuration: '$(BuildConfiguration)'
+              clean: false
+              maximumCpuCount: true
+        - ${{ if ne( projProps.platform, '') }}: # use default platform
+          - task: VSBuild@1
+            displayName: 'Build ${{ projProps.Name }} LegacyStyle'
+            inputs:
+              solution: '*/**/${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+              msbuildArgs: '-p:RunCodeAnalysis=False -p:OutputPath="$(Build.StagingDirectory)/${{ projProps.Name }}" -p:PackageDescription="${{ parameters.PackageDescription }}"'
+              platform: '$(BuildPlatformProj)'
+              configuration: '$(BuildConfiguration)'
+              clean: false
+              maximumCpuCount: true
+     #end if else Platform
+      #If WebProject -> Do Extra Steps
+      - ${{ if eq(projProps.IsWebProj, true) }}:
+        
+        - ${{ if or(eq( projProps.RunGulp, true), eq( projProps.InstallNodes, true)) }}:
+          - task: PowerShell@2
+            displayName: 'PS NPM CI & CLI'
+            inputs:
+              targetType: Inline
+              script: |
+                npm i -g gulp gulp-cli --silent --no-progress
+                npm ci --prefix ${{ parameters.workingDir }}$(CodeRepoName)/${{ projProps.SourceDir }} --silent --no-progress
+
+                
+        - task: VSBuild@1
+          displayName: 'Build ${{ projProps.Name }} LegacyStyle'
+          inputs:
+            solution: '*/**/${{ projProps.NameSpace }}${{ projProps.Name }}.csproj'
+            msbuildArgs: '-p:RunCodeAnalysis=False -p:OutputPath="$(Build.StagingDirectory)/${{ projProps.Name }}" -p:PackageDescription="${{ parameters.PackageDescription }}"'
+            platform: '$(BuildPlatformProj)'
+            configuration: '$(BuildConfiguration)'
+            clean: false
+            maximumCpuCount: true
+            
+        - ${{ if eq( projProps.RunGulp, true) }}:
+
+          - ${{each value in parameters.GulpTasks}}:    
+            - task: gulp@0
+              displayName: 'Gulp ${{ value }}'
+              continueOnError: true
+              inputs:
+                gulpFile: '$(Build.SourcesDirectory)\$(CodeRepoName)\${{ projProps.SourceDir }}\gulpfile.js'
+                gulpjs: '$(Build.SourcesDirectory)\$(CodeRepoName)\${{ projProps.SourceDir }}\node_modules\gulp\bin\gulp.js'
+                targets: ${{ value }}
+                enableCodeCoverage: false
+        #endif RunGulp
+        - task: CopyFiles@2
+          displayName: 'Copy css and js Files to: $(Build.ArtifactStagingDirectory)'
+          inputs:
+            SourceFolder: $(Build.SourcesDirectory)/$(CodeRepoName)/${{projProps.SourceDir}}
+            Contents: |
+              **/*.js
+              **/*.css
+              !**/*.ts
+              !**/*.scss
+              !**/node_modules/**
+              !**/gulpfile.js
+              !**/package.json
+              !**/tsconfig.json
+              !**/tslint.json
+            TargetFolder: '$(Build.StagingDirectory)/${{ projProps.Name }}/_PublishedWebsites/web/'
+        - ${{ if eq(parameters.ShowDebugInfo, true) }}:
+          - task: PowerShell@2
+            displayName: 'Debug info file copy post task'
+            inputs:
+              targetType: Inline
+              script: |
+                Write-Host "Version Variable ${{ parameters.PackVer }}"
+                Write-Host "Contents of: $(Build.SourcesDirectory)/$(CodeRepoName)/${{projProps.SourceDir}}"
+                $DirAfiles = Get-ChildItem $(Build.SourcesDirectory)/$(CodeRepoName)/${{projProps.SourceDir}} -Recurse -Force 
+                $DirAfiles | foreach-object {write-host $_.FullName} 
+                Write-Host 
+                
+                Write-Host "content of $(Build.StagingDirectory)/${{ projProps.Name }}/_PublishedWebsites/web/"
+                $DirBfiles = Get-ChildItem $(Build.StagingDirectory)/${{ projProps.Name }}/_PublishedWebsites/web/ -Recurse -Force 
+                $DirBfiles | foreach-object {write-host $_.FullName} 
+                Write-Host 
+        #If Precompile Project
+        - ${{ if eq(projProps.Precompile, true) }}:
+          #Run Precompile Script
+          - task: PowerShell@2
+            displayName: 'Precompile ${{ projProps.Name }}'
+            inputs:
+              targetType: filePath
+              filePath: '$(Build.SourcesDirectory)/$(CodeRepoName)/Precompile-Web.ps1'
+              arguments: '-SourceDirectory $(Build.StagingDirectory)/${{ projProps.Name }}/_PublishedWebsites -Target $(Build.StagingDirectory)\${{ projProps.Name }}PreComp' 
+              failOnStderr: true
+          #Create Precompile Package
+          - task: OctopusPack@4
+            displayName: Create ${{ projProps.Name }}PreComp Package
+            inputs:
+              PackageId: '${{ projProps.PackageNS }}.${{ projProps.Name }}.Precompile'
+              PackageFormat: 'NuPkg'
+              PackageVersion: ${{ parameters.PackVer }}
+              PackageDescription: ${{ parameters.PackageDescription }}
+              SourcePath: '$(Build.StagingDirectory)\${{ projProps.Name }}PreComp'
+              OutputPath: $(Build.ArtifactStagingDirectory)
+        #End If Precompile
+        - task: OctopusPack@4
+          displayName: Create ${{ projProps.Name }} Package
+          inputs:
+            PackageId: ${{ projProps.PackageNS }}.${{ projProps.Name }}
+            PackageDescription: ${{ parameters.PackageDescription }}
+            PackageFormat: 'NuPkg'
+            PackageVersion: ${{ parameters.PackVer }}
+            SourcePath: '$(Build.StagingDirectory)/${{ projProps.Name }}/_PublishedWebsites/Web'
+            OutputPath: $(Build.ArtifactStagingDirectory) 
+      #End If WebProject
+      #Package Projects
+      - ${{ if ne(projProps.IsWebProj, true) }}:
+        - task: OctopusPack@4
+          displayName: Create ${{ projProps.Name }} Package
+          inputs:
+            PackageId: ${{ projProps.PackageNS }}.${{ projProps.Name }}
+            PackageDescription: ${{ parameters.PackageDescription }}
+            PackageFormat: 'NuPkg'
+            PackageVersion: ${{ parameters.PackVer }}
+            SourcePath: '$(Build.StagingDirectory)/${{ projProps.Name }}'
+            OutputPath: $(Build.ArtifactStagingDirectory)   
+  #End Loop

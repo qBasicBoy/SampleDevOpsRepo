@@ -1,0 +1,140 @@
+# <summary>
+# This is the Release Pipeline definition file for the Sample-Core Project
+# Its triggered when a new release branch is created or an existing release branch updated
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters, 
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+#</remarks>
+
+
+#Core Release Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources 
+resources:
+ repositories: 
+  - repository: Sample-Core # code repository
+    name: Sample/ProjNS-Core 
+    type: git 
+    trigger:  # Release trigger for this repository
+    - 'release/version-*'
+    
+# Run the Pipeline against the List of Projects specified 
+parameters:
+
+  - name: ShowDebugInfo
+    displayName: Show Debug Info (slower)
+    type: string
+    default: False
+    values:
+    - False
+    - True
+
+  - name: ProjectsToInclude
+    displayName: 'Projects to be included in the Pipeline'
+    type: object
+    default:
+      - { Name: 'Web', NameSpace: '', PackageNS: 'OrgName.ProjNS', IsWebProj: true, Precompile: true , SourceDir: 'Source\Web', RunGulp: true, UseAgent: Alpha }
+      - { Name: 'BackgroundProcessing', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Alpha}
+      - { Name: 'ArchivedRecordFileGenerationService', NameSpace: 'Maintenance.', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'ExchangeSchemaUpdater', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'Migrate', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'ImportService', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'LoadBalancingService', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'Maintenance', NameSpace: '' , PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'RecordDeletor', NameSpace: '' , PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}  
+      - { Name: 'NGen', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo }
+      - { Name: 'PermissionsService', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+      - { Name: 'Service', NameSpace: '', PackageNS: 'OrgName.ProjNS', UseAgent: Bravo}
+
+  - name: BuildAgents
+    displayName: Build Agents (select)
+    type: object
+    default: 
+      - name: 'Alpha' 
+      - name: 'Bravo' 
+      
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildPlatformProj
+  value: 'AnyCPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-Core
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: CIPipeline
+  value: false
+- name: NugetConfigPath
+  value: '$(Build.SourcesDirectory)/$(CodeRepoName)/Source/.nuget/nuget.config'
+- name: WebWorkingDir
+  value: '$(CodeRepoName)/Source/Web'
+- name: CodeRepoBranchName #Get the branch name of that the code repo is using
+  value: $[ resources.repositories['Sample-Core'].ref ]
+
+
+pool:
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+stages:
+  - stage: Build
+    displayName: Build and Test  
+    jobs:
+    - job: EnvironmentTasks
+      displayName: 'Environment Tasks'
+      steps:
+      #Generate Version String
+      - template: '\SharedResources\GenerateVersionString.Template.yml'
+        parameters:
+          IsCIPipeline:  ${{ variables.CIPipeline }}
+      #Rename Build
+      - template: \SharedResources\SetBuildName.Template.yml
+
+    - ${{each agent in parameters.BuildAgents}}:
+
+      - job: BuildAgent${{ agent.name }}
+        displayName: 'Build On ${{ agent.name }} Agent'
+        dependsOn: ['EnvironmentTasks']
+        variables:
+          JobVersionVar: $[ dependencies.EnvironmentTasks.outputs['PopulateVersionVar.globalVersionVar'] ] 
+  
+        steps:
+        - checkout: Sample-Core
+          path: s/$(CodeRepoName)
+        - checkout: Self
+          path: s/Sample-DevOps
+          
+        - script: | 
+            echo "$(JobVersionVar)"
+          name: showGlobalVar
+          displayName: "Display Version Variable"
+
+          #NugetRestore
+        - template: \SharedResources\PackageRestore.Template.yml
+          parameters:
+            PackageRefProjs: true
+            nugetConfigPath: $(NugetConfigPath)
+
+        - template: '\SharedResources\Build-Pack-LegacyStyle.Template.yml'
+          parameters:
+            packVer: $(JobVersionVar)
+            projects: ${{parameters.ProjectsToInclude}}
+            UseAgent: ${{ agent.name }}
+            
+        #Push Packages to feed
+
+        - task: NuGetCommand@2
+          displayName: Push Packages to NuGet feed
+          inputs:
+            command: 'push'
+            packagesToPush: '$(Build.ArtifactStagingDirectory)\**\*.nupkg'
+            nuGetFeedType: 'internal'
+            publishVstsFeed: $(NugetFeed)

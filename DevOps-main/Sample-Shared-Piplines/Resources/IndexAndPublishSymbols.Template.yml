@@ -1,0 +1,47 @@
+# <summary>
+# This Template indexes and publish the debug symbols to DevOps teamServices, 
+# when a project has the sourcemap NuGet package installed, you can setup with the Debugger in to the 
+# project even if it is added as a Package
+# see https://docs.microsoft.com/en-us/azure/devops/pipelines/artifacts/symbols?view=azure-devops 
+# for more details
+# </summary>
+
+#<param>
+# **packVer** Set this version to the same as the NuGet package on the feed so that VisualStudio 
+# can load the correct debug symbols from  DevOps teamServices
+# **projects** An object list of all the project that you want to publish the debug symbols for
+#</param>
+
+parameters:
+
+- name: packVer
+  type: string
+
+- name: projects
+  type: object
+
+#Build and run Unit Tests in Projects 
+steps:
+#Information
+  - script: |
+      echo "packVer: $(packVer)"
+      echo "projects: $(projects)"
+      echo 
+    displayName: 'Template Task Info'
+
+  - ${{each projProps in parameters.projects}}:
+    #Loop through all projects in list
+      #Build Project
+    - task: PublishSymbols@2
+      displayName: 'Index & Publish ${{ projProps.Name }} Symbols' 
+      inputs:
+        symbolsFolder: '$(Build.StagingDirectory)\${{ projProps.NameSpace }}${{ projProps.Name }}' 
+        searchPattern: '**/*.pdb' 
+        indexSources: true 
+        publishSymbols: true 
+        symbolServerType: 'teamServices'       
+        detailedLog: true 
+        symbolsProduct: OrgName.${{ projProps.NameSpace }}${{ projProps.Name }}
+        symbolsVersion: $(packVer)
+        symbolsArtifactName: 'OrgName.${{ projProps.NameSpace }}${{ projProps.Name }}' 
+    #End Loop

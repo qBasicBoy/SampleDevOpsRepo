@@ -1,0 +1,289 @@
+# <summary>
+# This is the Build and Release Pipeline file for the Sample Service apps and functions
+# It will deploy directly to the relevant Azure resource
+# Each environment has its on stage
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters, 
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+# 
+# Each environment has a variable group in the DevOps library, see https://dev.azure.com/OrgNameProjNS/Sample/_library?itemType=VariableGroups
+# the variable groups are mapped to the Stage(Dev, QA, Prod) to get the corresponding settings for each environment
+#</remarks>
+
+#Shared Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources 
+resources:
+ repositories: 
+  - repository: Sample-Services # code repository
+    name: Sample/Sample-Services 
+    type: git 
+    trigger:  # Release trigger for this repository
+    - 'master'
+
+# Run the Pipeline against the List of Projects specified 
+parameters:
+  - name: ProjectsToInclude
+    displayName: 'Projects to be included in the Pipeline'
+    type: object
+    default:
+    - { Name: 'Types', NameSpace: 'Sample.Services.TextTranslation.', PackageNS: 'Sample.Services.TextTranslation', PublishAsNuget: true }
+    - { Name: 'Functions', NameSpace: 'Sample.Services.TextTranslation.', PackageNS: 'Sample.Services.TextTranslation', PublishAsArtifact: true, PublishToFunctionApp: true, functionAppName: alc-Sample-func-translation}
+    - { Name: 'Functions', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsArtifact: true, PublishToFunctionApp: true, functionAppName: alc-Sample-func-translation-ie }
+    - { Name: 'Types', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsNuget: true }
+    - { Name: 'Client', NameSpace: 'Sample.Services.TextTranslation.InfoExchange.', PackageNS: 'Sample.Services.TextTranslation.InfoExchange', PublishAsNuget: true }
+
+  - name: TestCoreProjects
+    displayName: 'Test Projects to be included'
+    type: object
+    default:
+    - {  ProjectFileName: 'Sample.Services.TextTranslation.UnitTests.csproj', DisplayName: 'TextTranslation Tests'  }
+
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-Services
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: ServicesPipeline
+  value: true
+- name: NugetConfigPath
+  value: '$(Build.SourcesDirectory)/$(CodeRepoName)/Source/.nuget/nuget.config'
+- name: azureSubscription
+  value: 'OrgName Azure (Sample Services)'
+- name: CodeRepoBranchName #Get the branch name  
+  value: $[ resources.repositories['Sample-Services'].ref ]
+
+
+
+pool:
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+stages:
+- stage: Build
+  displayName: Build and Test
+  jobs:
+  - job: Build
+    displayName: Build job
+    steps:
+    - checkout: Sample-Services
+      path: s/$(CodeRepoName)
+    - checkout: Self
+      path: s/DevOps
+
+    #Trigger and Build information
+    - script: |
+        echo "Triggered by Pipeline: $(resources.pipeline.Sample-Core-Trigger.pipelineName)"
+        echo "Trigger Build: $(resources.pipeline.Sample-Core-Trigger.runName)"   
+        echo "For: $(resources.pipeline.Sample-Core-Trigger.requestedFor)"
+        echo "$(resources.triggeringAlias)"
+        echo "$(resources.triggeringCategory)"
+        echo 
+      displayName: 'Pipeline Info'
+
+    #Generate Version String
+    - template: '..\SharedResources\GenerateVersionString.Template.yml'
+      parameters:
+        IsCIPipeline: false
+
+    #Rename Build
+    - template: \SharedResources\SetBuildName.Template.yml 
+ 
+    #NugetRestore
+    - template: \SharedResources\UsingCoreSLI\PackageRestore.Template.yml
+
+    #build
+    - template: '\SharedResources\UsingCoreSLI\Build.Template.yml'
+      parameters:
+        packVer: $(PackVer)
+        projects: ${{parameters.ProjectsToInclude}}
+
+    #Run Unit Tests
+    - template: \SharedResources\UsingCoreSLI\RunUnitTests.Template.yml
+      parameters:
+        projects: ${{ parameters.TestCoreProjects }}
+
+- stage: PublishNugetPackage
+  displayName: Publish Nuget Packages
+  dependsOn:
+  - Build
+  condition: eq(dependencies.Build.result, 'Succeeded')
+  jobs:
+  - job: PublishNugetPackage
+    displayName: Publish Nuget Package
+    steps:
+    - download: current
+      artifact: buildStagingDirectory
+    - task: NuGetCommand@2
+      displayName: 'Push Nuget packages to feed'
+      inputs:
+        command: 'push'
+        feedsToUse: 'select'
+        packagesToPush: '$(Pipeline.Workspace)/buildStagingDirectory/nuget/**/*.nupkg'
+        nuGetFeedType: 'internal'
+        publishVstsFeed: $(NugetFeed)
+        versioningScheme: byEnvVar
+        versionEnvVar: $(PackVer)
+        allowPackageConflicts: true
+
+
+- stage: Dev
+  displayName: Deploy to Development environment
+  dependsOn: 
+  - Build
+  - PublishNugetPackage
+  condition: |
+    and
+    (
+      eq(dependencies.Build.result, 'Succeeded'),
+      in(dependencies.PublishNugetPackage.result, 'Succeeded', 'Skipped')
+    )
+  jobs:
+  - deployment: publishDev
+    displayName: 'Publish packages to function app and apply settings'
+    environment: Sample-Services-Translation-DEV
+    variables:
+      - group: Sample-Services-Translations-Dev
+      - name: Env
+        value: 'dev'
+      - name: DECODE_PERCENTS
+        value: true
+    strategy:
+      runOnce:
+        deploy:          
+          steps:
+          - download: current
+            artifact: buildStagingDirectory
+            displayName: Download Artifacts from build stage
+          
+          - template: '\SharedResources\PublishFunctionApp.Template.yml'
+            parameters:
+              projects: ${{parameters.ProjectsToInclude}}
+              Env: $(Env)
+
+          - template: '\Sample-Services\SetFunctionAppSettings.Template.yml'
+
+#QA Stage
+- stage: Staging 
+  displayName: Deploy to Staging environment
+  dependsOn: 
+  - Build
+  - PublishNugetPackage
+  condition: |
+    and
+    (
+      eq(dependencies.Build.result, 'Succeeded'),
+      in(dependencies.PublishNugetPackage.result, 'Succeeded', 'Skipped')
+    )
+  jobs:
+  - deployment: publishStaging
+    displayName: 'Publish packages to function app and apply settings'
+    environment: Sample-Services-Translation-Staging
+    variables:
+      - group: Sample-Services-Translations-Staging
+      - name: Env
+        value: 'staging'
+      - name: DECODE_PERCENTS
+        value: true
+    strategy:
+      runOnce:
+        deploy:          
+          steps:
+          - download: current
+            artifact: buildStagingDirectory
+            displayName: Download Artifacts from build stage
+
+          - template: '\SharedResources\PublishFunctionApp.Template.yml'
+            parameters:
+              projects: ${{parameters.ProjectsToInclude}}
+              Env: $(Env)
+
+          - template: '\Sample-Services\SetFunctionAppSettings.Template.yml'
+
+
+#QA Stage
+- stage: QA 
+  displayName: Deploy to QA environment
+  dependsOn: 
+  - Build
+  - PublishNugetPackage
+  condition: |
+    and
+    (
+      eq(dependencies.Build.result, 'Succeeded'),
+      in(dependencies.PublishNugetPackage.result, 'Succeeded', 'Skipped')
+    )
+  jobs:
+  - deployment: publishQA
+    displayName: 'Publish packages to function app and apply settings'
+    environment: Sample-Services-Translation-QA
+    variables:
+      - group: Sample-Services-Translations-QA
+      - name: Env
+        value: 'qa'
+      - name: DECODE_PERCENTS
+        value: true
+    strategy:
+      runOnce:
+        deploy:          
+          steps:
+          - download: current
+            artifact: buildStagingDirectory
+            displayName: Download Artifacts from build stage
+
+          - template: '\SharedResources\PublishFunctionApp.Template.yml'
+            parameters:
+              projects: ${{parameters.ProjectsToInclude}}
+              Env: $(Env)
+
+          - template: '\Sample-Services\SetFunctionAppSettings.Template.yml'
+
+#Prod Stage
+- stage: Production 
+  displayName: Deploy to Production environment
+  dependsOn:
+  - Build
+  - PublishNugetPackage
+# Not depending on the other environment at this point
+  #- Dev
+  #- QA
+  condition: |
+    and
+    (
+      eq(dependencies.Build.result, 'Succeeded'),
+      in(dependencies.PublishNugetPackage.result, 'Succeeded', 'Skipped')
+    )
+  jobs:
+  - deployment: publishProduction
+    displayName: 'Publish packages to function app and apply settings'
+    environment: Sample-Services-Translation-Prod
+    variables:
+      - group: Sample-Services-Translations-Prod
+      - name: Env
+        value: 'prod'
+      - name: DECODE_PERCENTS
+        value: true
+    strategy:
+      runOnce:
+        deploy:          
+          steps:
+          - download: current
+            artifact: buildStagingDirectory
+            displayName: Download Artifacts from build stage
+
+          - template: '\SharedResources\PublishFunctionApp.Template.yml'
+            parameters:
+              projects: ${{parameters.ProjectsToInclude}}
+              Env: $(Env)
+
+          - template: '\Sample-Services\SetFunctionAppSettings.Template.yml'

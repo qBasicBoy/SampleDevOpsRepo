@@ -1,0 +1,42 @@
+# <summary>
+# This Template will rename the build so that is not based on the commit id
+# of the DevOps Repo 
+# </summary>
+
+#<remarks>
+# unfortunately the commit message from the code repo cannot be pulled, see; 
+# https://stackoverflow.com/questions/62156628/azure-pipelines-multi-repo-how-to-get-git-commit-id 
+#</remarks>
+
+#<param>
+# This is the value for the new BuildName, by default the 
+#</param>
+
+parameters:
+
+- name: buildName
+  type: string
+  default: $VersionVar
+  
+steps:
+- task: PowerShell@2
+  displayName: 'Set Build Name'
+  continueOnError: true
+  inputs:
+    targetType: Inline
+    script: |
+      echo $Env:BUILD_BUILDNUMBER
+      $buildNumber = $Env:BUILD_BUILDNUMBER
+      echo $buildNumber
+      $revision = $buildNumber.Substring($buildNumber.LastIndexOf('.') + 1)
+      echo "revision: $revision"
+      $branchSourcePath = "$(CodeRepoBranchName)" -replace "refs/heads/", "" 
+      echo $branchSourcePath
+      $branchSourcePath = $branchSourcePath -replace "\.", "-"
+      echo $branchSourcePath
+      $VersionVar = $(Get-Date -Format yyyy.MM.dd) + ".$revision-$branchSourcePath"
+      echo $VersionVar
+      $VersionVar = $VersionVar -replace "/", "-"
+      $VersionVar = $VersionVar -replace "_", "-"
+      Write-Host "setting VersionVar = $VersionVar"
+      Write-Host "##vso[build.updatebuildnumber]$VersionVar"

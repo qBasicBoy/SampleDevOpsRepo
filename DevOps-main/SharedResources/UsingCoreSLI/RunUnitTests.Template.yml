@@ -1,0 +1,21 @@
+parameters:
+- name: projects
+  type: object
+
+#Build and run Unit Tests in Projects 
+steps:
+  - ${{if parameters.projects}}: # null check
+    - ${{each projProps in parameters.projects}}:
+      #Loop throue all projects in list
+        #Run Tests
+      - task: DotNetCoreCLI@2
+        displayName: 'Test Assemblies for ${{ projProps.DisplayName }} '
+        inputs:
+          command: 'test'
+          #testRunTitle: '${{ projProps.ProjectFileName }}'
+          projects: '*/**/*${{ projProps.ProjectFileName }}'
+          arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+          #arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput="$(Build.SourcesDirectory)/TestResults/Coverage/"'
+      # do this after your tests have run
+      #End Loop
+    #End If

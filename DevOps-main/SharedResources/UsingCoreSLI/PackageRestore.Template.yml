@@ -1,0 +1,18 @@
+parameters:
+
+- name: restoreSolution
+  type: string
+  default: '*'
+
+- name: feedsToUse
+  type: string
+  default: 'select'   
+
+# NuGet Restore
+steps:
+- task: DotNetCoreCLI@2
+  displayName: 'Restore packages using DotNetCoreCLI'
+  inputs:
+    projects: '*\**\${{ parameters.restoreSolution }}.sln'
+    feedsToUse: ${{ parameters.feedsToUse }}
+

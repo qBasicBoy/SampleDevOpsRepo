@@ -1,0 +1,50 @@
+# <summary>
+# This Template will Restore Nuget packages, depending if the project is in the older style
+# with the Properties and References section or the new style dependency section 
+# the parameter PackageRefProjs must be correctly set
+# </summary>
+
+#<param>
+# **restoreSolution** parameter can be the Solution name 
+# or if there is only one Solution in the Repo left with its default value
+# **nugetConfigPath** Path to the nugetConfig defaults to finding the nuget.config in the repo
+# **PackageRefProjs** Depending if the project is in the older style
+# with the Properties and References section or the new style dependency section 
+# the parameter PackageRefProjs must be correctly set to true or false
+#</param>
+
+parameters:
+
+- name: restoreSolution
+  type: string
+  default: '*'
+
+- name: nugetConfigPath
+  type: string
+  default: '*\**\nuget.config'
+
+- name: PackageRefProjs
+  type: boolean
+  default: false   
+
+# NuGet Restore
+steps:
+- ${{ if eq(parameters.PackageRefProjs, true) }}:
+    - task: VSBuild@1
+      displayName: 'Restore using PackageConfig file'
+      inputs:
+        solution: '*\**\${{ parameters.restoreSolution }}.sln'
+        msbuildArgs: '/T:Restore /p:RestorePackagesConfig=true /p:RestoreConfigFile=${{ parameters.nugetConfigPath }}'
+        platform: '$(BuildPlatform)'
+        configuration: '$(BuildConfiguration)'
+        maximumCpuCount: true
+- ${{ if ne(parameters.PackageRefProjs, true) }}:
+    - task: VSBuild@1
+      displayName: 'Restore using Project References'
+      inputs:
+        solution: '*\**\${{ parameters.restoreSolution }}.sln'
+        msbuildArgs: '/T:Restore'
+        platform: '$(BuildPlatform)'
+        configuration: '$(BuildConfiguration)'
+        maximumCpuCount: true
+

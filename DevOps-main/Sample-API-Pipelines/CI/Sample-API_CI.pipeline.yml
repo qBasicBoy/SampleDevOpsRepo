@@ -1,0 +1,100 @@
+# <summary>
+# This is the Continuous Integration (CI) Pipeline definition file for the Sample-API Project
+# Its triggered to run when changes are merged in to the master branch
+# </summary>
+
+#<remarks>
+# This Pipeline file uses Variables and parameters, 
+# the parameters are used because they allow for objects with multiple properties to be defined
+# this cannot be done using variables
+#</remarks>
+
+#<ToDo>
+# One of the unit tests fails, once the Sample repo's are updated from the current enable workspace check if it still fails 
+# and if so investigate 
+#</ToDo>
+
+
+#API Release Pipeline
+trigger: none #Removes CI Trigger on the DevOps Repo
+
+#Get Resources 
+resources:
+ repositories: 
+  - repository: Sample-API # code repository
+    name: Sample/ProjNS-API 
+    type: git 
+    trigger:  # Release trigger for this repository
+    - 'master'
+
+# Run the Pipeline against the List of Projects specified 
+parameters:
+  - name: ProjectsToIncludeAPI
+    displayName: 'Projects to be included in the Pipeline'
+    type: object
+    default:
+    - { Name: 'Web.Api', NameSpace: '', PackageNS: 'OrgName.ProjNSAPI' , UseAgent: Alpha}
+    - { Name: 'BackgroundProcessing', PackageNS: 'OrgName.ProjNSAPI', NameSpace: '', UseAgent: Alpha}
+
+ #List of Projects to build and run UnitTests against   
+  - name: TestProjects
+    type: object
+    default:
+    - {  ProjectFileName: 'DataManagement.Tests', DisplayName: DataManagement, UseAgent: Alpha }
+    - {  ProjectFileName: 'Enable.Testing.Infrastructure', DisplayName: Infrastructure, UseAgent: Alpha }
+    - {  ProjectFileName: 'JsonApiSerialization.Tests', DisplayName: JsonApiSerialization, UseAgent: Alpha }
+    - {  ProjectFileName: 'Web.Api.Tests', DisplayName: API, UseAgent: Alpha }
+
+variables:
+- name: BuildPlatform
+  value: 'Any CPU'
+- name: BuildConfiguration
+  value: 'Release'
+- name: PackVer
+  value: '' #Will be populated at runtime
+- name: CodeRepoName
+  value: Sample-API
+- name: NugetFeed
+  value: Sample/$(CodeRepoName)
+- name: CIPipeline
+  value: true
+- name: CodeRepoBranchName #Get the branch name of that the Sample-API repo is using 
+  value: $[ resources.repositories['Sample-API'].ref ]
+
+pool:  
+  vmImage: 'windows-latest'
+  name: 'Sample Pipelines'
+
+jobs:
+- job: Main
+  displayName: Restore Build and Publish Projects
+  steps:
+  - checkout: Sample-API
+    path: s/$(CodeRepoName)
+  - checkout: Self
+    path: s/Sample-DevOps
+
+
+    #Generate Version String
+  - template: '\SharedResources\GenerateVersionString.Template.yml'
+    parameters:
+      IsCIPipeline:  ${{ variables.CIPipeline }}
+      
+    #Rename Build
+  - template: \SharedResources\SetBuildName.Template.yml
+    
+    #NugetRestore
+  - template: \SharedResources\PackageRestore.Template.yml
+
+    #Run Unit Tests
+  - template: \SharedResources\RunUnitTests.Template.yml
+    parameters:
+      projects: ${{ parameters.TestProjects }}
+
+    #Build and pack Projects 
+  - template: \SharedResources\Build-Pack-NetSDKStyle.Template.yml
+    parameters:
+      packVer: $(PackVer)
+      projects: ${{parameters.ProjectsToIncludeAPI}}
+      UseOctoPack: 'true'
+    
