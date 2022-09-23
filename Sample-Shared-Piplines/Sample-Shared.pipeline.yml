@@ -16,7 +16,7 @@
 
 #<ToDo>
 # In order for Debug Symbols and sourceLink info to work the project files need to be migrated
-# to the new project file layout, please follow the instructions in ticket 2943 / confluence
+# to the new project file layout, please follow the instructions in ticket xxx/ confluence
 # reenable code on line 44 and 134
 #</ToDo>
 

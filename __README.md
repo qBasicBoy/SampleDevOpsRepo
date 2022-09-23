@@ -1,6 +1,12 @@
 # Details DevOps Repo
 
-BASED ON 
+BASED ON the concepts descriped in:
+[multi repo approch](https://medium.com/@mr.david.mueller/yaml-pipelines-with-in-its-own-devops-repository-multiple-repositories-a7a5c80e9987)
+
+[DevOps Repo Standarts](https://medium.com/@mr.david.mueller/automation-documentation-and-best-practices-for-your-devops-yaml-pipelines-using-githooks-and-b8dfa078bfc1)
+
+
+
 
 This repository holds the Devops Resources, it holds the yaml files for the pipelines in the [Dev Ops Pipelines Section](https://dev.azure.com/OrgNameProjNS/Sample_Rackspace/_build)
 

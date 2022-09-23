@@ -6,7 +6,7 @@
 #<Param>
 # The object parameter projects expects the format
 # - {  ProjectFileName: 'JsonApiSerialization.Tests', DisplayName: JsonApiSerialization } 
-# - {  ProjectFileName: 'Enable.Testing.Infrastructure', DisplayName: Infrastructure }
+# - {  ProjectFileName: 'NameSpace.Testing.Infrastructure', DisplayName: Infrastructure }
 #</Param>
 
 

@@ -1,12 +1,6 @@
 # Details DevOps Repo
 
-BASED ON the concepts descriped in:
-[multi repo approch](https://medium.com/@mr.david.mueller/yaml-pipelines-with-in-its-own-devops-repository-multiple-repositories-a7a5c80e9987)
-
-[DevOps Repo Standarts](https://medium.com/@mr.david.mueller/automation-documentation-and-best-practices-for-your-devops-yaml-pipelines-using-githooks-and-b8dfa078bfc1)
-
-
-
+BASED ON 
 
 This repository holds the Devops Resources, it holds the yaml files for the pipelines in the [Dev Ops Pipelines Section](https://dev.azure.com/OrgNameProjNS/Sample_Rackspace/_build)
 
@@ -240,6 +234,47 @@ for example the the summary and remarks tags from the release pipeline
 - Build-Pack-LegacyStyle
 - Build-Pack-NetSDKStyle
 - IndexAndPublishSymbols
+
+
+## Sample-SupportTool_CI.pipeline.yml
+
+### summary
+
+ This is the CI Pipeline definition file for the Sample-SupportTool Project
+ Its triggered when the Master branch gets updated
+ 
+### remarks
+
+ This Pipeline file uses Variables and parameters, 
+ the parameters are used because they allow for objects with multiple properties to be defined
+ this cannot be done using variables
+
+### Templates Used by Pipeline
+- GenerateVersionString
+- SetBuildName
+- PackageRestore
+- RunUnitTests
+- Build-Pack-LegacyStyle
+
+
+## Sample-SupportTool_Release.pipeline.yml
+
+### summary
+
+ This is the Release Pipeline definition file for the Sample-SupportTool Project
+ Its triggered when a new release branch is created or an existing release branch updated
+ 
+### remarks
+
+ This Pipeline file uses Variables and parameters, 
+ the parameters are used because they allow for objects with multiple properties to be defined
+ this cannot be done using variables
+
+### Templates Used by Pipeline
+- GenerateVersionString
+- SetBuildName
+- PackageRestore
+- Build-Pack-LegacyStyle
 ---
 # Pipeline Template files
 
@@ -297,6 +332,8 @@ for example the the summary and remarks tags from the release pipeline
 - Sample-Core_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## PackageRestore.Template.yml
@@ -308,6 +345,8 @@ for example the the summary and remarks tags from the release pipeline
 - Sample-Core_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## RunUnitTests.Template.yml
@@ -316,6 +355,7 @@ for example the the summary and remarks tags from the release pipeline
 - Sample-API_CI.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
 
 
 ## Build-Pack-LegacyStyle.Template.yml
@@ -367,6 +407,8 @@ GulpTasks a string list of the gulp tasks to run
 - Sample-Core_CI.pipeline.yml
 - Sample-Core_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## Build-Pack-NetSDKStyle.Template.yml
@@ -430,6 +472,8 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-Core_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## PackageRestore.Template.yml
@@ -456,6 +500,8 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-Core_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## PublishFunctionApp.Template.yml
@@ -486,6 +532,7 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-API_CI.pipeline.yml
 - Sample-Core_CI.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
 
 
 ## SetBuildName.Template.yml
@@ -511,6 +558,8 @@ but alternatively Octopack can be used, by setting the UseOctoPack template para
 - Sample-Core_Release.pipeline.yml
 - Sample-Services_Translation_Build_Release.pipeline.yml
 - Sample-Shared.pipeline.yml
+- Sample-SupportTool_CI.pipeline.yml
+- Sample-SupportTool_Release.pipeline.yml
 
 
 ## SetTimeZone.Template.yml

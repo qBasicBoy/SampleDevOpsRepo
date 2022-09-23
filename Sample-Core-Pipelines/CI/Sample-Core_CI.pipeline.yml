@@ -68,7 +68,7 @@ parameters:
     - {  ProjectFileName: 'DatabaseSchemaTest', DisplayName: DatabaseSchema, UseAgent: Bravo }
     - {  ProjectFileName: 'DataTranslationManagementTests', DisplayName: DataTranslationManagement, UseAgent: Bravo }
     - {  ProjectFileName: 'DictionaryTermsManagementTests', DisplayName: DictionaryTermsManagement, UseAgent: Bravo }
-    - {  ProjectFileName: 'Enable.Infrastructure.Testing', DisplayName: Infrastructure, UseAgent: Bravo }
+    - {  ProjectFileName: 'ENameSpace.Infrastructure.Testing', DisplayName: Infrastructure, UseAgent: Bravo }
     - {  ProjectFileName: 'Misc.UnitTests', DisplayName: Misc, UseAgent: Alpha }
     - {  ProjectFileName: 'SharePointIntegrationTests', DisplayName: SharePointIntegration, UseAgent: Bravo }
     - {  ProjectFileName: 'SingleSignOnTests', DisplayName: SingleSignOn, UseAgent: Bravo }
